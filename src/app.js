@@ -12,6 +12,7 @@
 
   const byId = (id) => document.getElementById(id);
   const form = byId('schedule-form');
+  const formStatus = byId('form-status');
   const fields = { character: byId('character'), animal: byId('animal'), type: byId('type'), scheduleAt: byId('schedule-at'), notes: byId('notes') };
   const state = loadState();
   let editingId = null;
@@ -35,7 +36,14 @@
     return Array.isArray(value) && value.length ? [...new Set(value.filter(Boolean).map((item) => String(item).trim()).filter(Boolean))] : [...fallback];
   }
   function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-  function escapeHtml(value) { const holder = document.createElement('div'); holder.textContent = value ?? ''; return holder.innerHTML; }
+  function newEntryId() {
+    if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+    return `entry-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+  function setFormStatus(message = '', stateName = '') {
+    formStatus.textContent = message;
+    formStatus.dataset.state = stateName;
+  }
   function readableDate(value) {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? '—' : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
@@ -94,6 +102,7 @@
     form.reset();
     fields.scheduleAt.value = '';
     fields.notes.value = '';
+    setFormStatus();
     byId('submit-entry').textContent = 'Add schedule';
     byId('cancel-edit').hidden = true;
     autoResizeNotes();
@@ -109,11 +118,23 @@
     fields.character.focus();
   }
   function upsertEntry() {
-    if (!form.reportValidity()) return;
-    const entry = { id: editingId || crypto.randomUUID(), character: fields.character.value, animal: fields.animal.value, type: fields.type.value, trait: selectedTrait(), scheduleAt: new Date(fields.scheduleAt.value).toISOString(), notes: fields.notes.value.trim(), selected: false };
+    if (!form.reportValidity()) {
+      const missingField = [...form.elements].find((element) => typeof element.checkValidity === 'function' && !element.checkValidity());
+      setFormStatus(`Complete ${missingField?.closest('label, fieldset')?.firstChild?.textContent?.trim() || 'the required fields'} before adding the schedule.`, 'error');
+      return;
+    }
+    const entry = { id: editingId || newEntryId(), character: fields.character.value, animal: fields.animal.value, type: fields.type.value, trait: selectedTrait(), scheduleAt: new Date(fields.scheduleAt.value).toISOString(), notes: fields.notes.value.trim(), selected: false };
     if (editingId) { const index = state.entries.findIndex((item) => item.id === editingId); if (index !== -1) state.entries[index] = { ...entry, selected: state.entries[index].selected }; }
     else state.entries.push(entry);
-    saveState(); renderTable(); resetForm();
+    saveState(); renderTable();
+    setFormStatus(editingId ? 'Schedule entry updated.' : 'Schedule entry added.', 'success');
+    editingId = null;
+    form.reset();
+    fields.scheduleAt.value = '';
+    fields.notes.value = '';
+    byId('submit-entry').textContent = 'Add schedule';
+    byId('cancel-edit').hidden = true;
+    autoResizeNotes();
   }
   function askToRemove(ids) {
     pendingConfirmation = () => { state.entries = state.entries.filter((entry) => !ids.includes(entry.id)); saveState(); renderTable(); if (ids.includes(editingId)) resetForm(); };
