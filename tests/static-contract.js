@@ -8,9 +8,9 @@ const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const script = fs.readFileSync(path.join(root, 'src', 'app.js'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'src', 'styles.css'), 'utf8');
 
-const requiredHtml = ['id="character"', 'id="animal"', 'id="type"', 'name="trait"', 'type="datetime-local"', 'id="notes"', 'id="form-status"', 'id="schedule-body"', 'id="remove-selected"', 'id="manager-dialog"', 'id="confirm-dialog"'];
-const requiredScript = ['localStorage', 'newEntryId', 'globalThis.crypto?.randomUUID', 'askToRemove', 'editEntry', 'openManager', "'Bear'", "'Wild Buffalo'", "'Wolf'", 'Intl.DateTimeFormat', 'Schedule entry added.'];
-const requiredCss = ['position:sticky', 'textarea', 'overflow:hidden', '--cyan', '@media'];
+const requiredHtml = ['id="character"', 'id="animal"', 'id="type"', 'name="trait"', 'type="datetime-local"', 'id="notes"', 'id="form-status"', 'id="schedule-search"', 'id="filter-toggle"', 'id="filter-panel"', 'id="filter-character"', 'id="filter-animal"', 'id="filter-type"', 'id="filter-trait"', 'data-sort="scheduleAt"', 'id="schedule-body"', 'id="remove-selected"', 'id="manager-dialog"', 'id="confirm-dialog"'];
+const requiredScript = ['localStorage', 'newEntryId', 'globalThis.crypto?.randomUUID', 'matchesView', 'visibleEntries', 'data-sort', 'clearFilters', 'askToRemove', 'editEntry', 'openManager', "'Bear'", "'Wild Buffalo'", "'Wolf'", 'Intl.DateTimeFormat', 'Schedule entry added.'];
+const requiredCss = ['position:sticky', 'textarea', 'overflow:hidden', '--cyan', 'filter-panel', 'sort-button', 'data-value="phantom"', 'data-value="perfect"', '@media'];
 
 for (const [content, labels, kind] of [[html, requiredHtml, 'HTML'], [script, requiredScript, 'app.js'], [css, requiredCss, 'styles.css']]) {
   for (const label of labels) {

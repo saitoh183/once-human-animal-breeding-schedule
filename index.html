@@ -46,9 +46,20 @@
 
     <section class="table-panel" aria-labelledby="schedule-title">
       <div class="table-toolbar"><div><p class="eyebrow">02 · ACTIVE QUEUE</p><h2 id="schedule-title">Breeding schedule <span id="entry-count" class="count">0</span></h2></div><div class="table-actions"><span id="selection-count" class="subtle">No entries selected</span><button id="remove-selected" class="button button-danger" type="button" disabled>Remove selected</button></div></div>
+      <div class="schedule-tools">
+        <label class="search-field"><span class="sr-only">Search schedule</span><input id="schedule-search" type="search" autocomplete="off" placeholder="Search schedule, notes, animal…"></label>
+        <button id="filter-toggle" class="button button-quiet" type="button" aria-expanded="false" aria-controls="filter-panel">Filters <span id="filter-count" class="filter-count" hidden>0</span></button>
+      </div>
+      <div id="filter-panel" class="filter-panel" hidden>
+        <label>Character <select id="filter-character" data-filter="character"></select></label>
+        <label>Animal <select id="filter-animal" data-filter="animal"></select></label>
+        <label>Type <select id="filter-type" data-filter="type"></select></label>
+        <label>Trait <select id="filter-trait" data-filter="trait"></select></label>
+        <button id="clear-filters" class="button button-quiet" type="button">Clear filters</button>
+      </div>
       <div class="table-wrap" tabindex="0">
         <table>
-          <thead><tr><th class="checkbox-cell"><input id="select-all" type="checkbox" aria-label="Select all entries"></th><th>Character</th><th>Animal</th><th>Type</th><th>Trait</th><th>Breeding check</th><th>Notes</th><th class="actions-cell">Actions</th></tr></thead>
+          <thead><tr><th class="checkbox-cell"><input id="select-all" type="checkbox" aria-label="Select all visible entries"></th><th><button class="sort-button" type="button" data-sort="character">Character</button></th><th><button class="sort-button" type="button" data-sort="animal">Animal</button></th><th><button class="sort-button" type="button" data-sort="type">Type</button></th><th><button class="sort-button" type="button" data-sort="trait">Trait</button></th><th><button class="sort-button" type="button" data-sort="scheduleAt">Breeding check</button></th><th><button class="sort-button" type="button" data-sort="notes">Notes</button></th><th class="actions-cell">Actions</th></tr></thead>
           <tbody id="schedule-body"></tbody>
         </table>
         <div id="empty-state" class="empty-state"><strong>No breeding checks scheduled.</strong><span>Add the first entry above. The table is ready when the ranch is.</span></div>
