@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0d12">
+  <title>Once Human · Breeding Schedule</title>
+  <link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">ONCE HUMAN · RANCHING</p>
+        <h1>Animal Breeding Schedule</h1>
+        <p class="subtle">Track pairings, traits, and the next time a breeding check is due.</p>
+      </div>
+      <button id="clear-table" class="button button-danger" type="button">Clear table</button>
+    </header>
+
+    <section class="entry-panel" aria-labelledby="entry-title">
+      <div class="section-heading"><span class="section-number">01</span><h2 id="entry-title">Schedule entry</h2></div>
+      <form id="schedule-form" novalidate>
+        <div class="form-grid">
+          <label class="field">Character
+            <span class="select-with-action"><select id="character" required></select><button class="manage-button" data-manage="characters" type="button" title="Manage characters" aria-label="Manage characters">⋯</button></span>
+          </label>
+          <label class="field">Animal
+            <span class="select-with-action"><select id="animal" required></select><button class="manage-button" data-manage="animals" type="button" title="Manage animals" aria-label="Manage animals">⋯</button></span>
+          </label>
+          <label class="field">Type
+            <span class="select-with-action"><select id="type" required></select><button class="manage-button" data-manage="types" type="button" title="Manage types" aria-label="Manage types">⋯</button></span>
+          </label>
+          <fieldset class="field trait-field"><legend>Trait</legend><div class="radio-row"><label><input type="radio" name="trait" value="TH" checked> <span>TH</span></label><label><input type="radio" name="trait" value="Perfect"> <span>Perfect</span></label></div></fieldset>
+          <label class="field date-field">Breeding check
+            <input id="schedule-at" type="datetime-local" required>
+          </label>
+          <label class="field notes-field">Notes
+            <textarea id="notes" rows="2" placeholder="Pairing details, appearance, parents, or anything future-you will appreciate."></textarea>
+          </label>
+          <div class="form-actions"><button id="submit-entry" class="button button-primary" type="submit">Add schedule</button><button id="cancel-edit" class="button button-quiet" type="button" hidden>Cancel edit</button></div>
+        </div>
+      </form>
+    </section>
+
+    <section class="table-panel" aria-labelledby="schedule-title">
+      <div class="table-toolbar"><div><p class="eyebrow">02 · ACTIVE QUEUE</p><h2 id="schedule-title">Breeding schedule <span id="entry-count" class="count">0</span></h2></div><div class="table-actions"><span id="selection-count" class="subtle">No entries selected</span><button id="remove-selected" class="button button-danger" type="button" disabled>Remove selected</button></div></div>
+      <div class="table-wrap" tabindex="0">
+        <table>
+          <thead><tr><th class="checkbox-cell"><input id="select-all" type="checkbox" aria-label="Select all entries"></th><th>Character</th><th>Animal</th><th>Type</th><th>Trait</th><th>Breeding check</th><th>Notes</th><th class="actions-cell">Actions</th></tr></thead>
+          <tbody id="schedule-body"></tbody>
+        </table>
+        <div id="empty-state" class="empty-state"><strong>No breeding checks scheduled.</strong><span>Add the first entry above. The table is ready when the ranch is.</span></div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="manager-dialog" aria-labelledby="manager-title"><form method="dialog" class="dialog-card"><div class="dialog-header"><div><p class="eyebrow">PULLDOWN MANAGER</p><h2 id="manager-title">Manage list</h2></div><button class="icon-button" value="cancel" aria-label="Close">×</button></div><p id="manager-help" class="subtle"></p><div id="manager-list" class="manager-list"></div><div class="add-row"><input id="new-list-item" autocomplete="off"><button id="add-list-item" class="button button-primary" type="button">Add</button></div></form></dialog>
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title"><form method="dialog" class="dialog-card compact"><h2 id="confirm-title">Confirm removal</h2><p id="confirm-message">This cannot be undone.</p><div class="dialog-actions"><button class="button button-quiet" value="cancel">Cancel</button><button id="confirm-action" class="button button-danger" value="confirm">Remove</button></div></form></dialog>
+  <template id="row-template"><tr><td class="checkbox-cell"><input class="row-select" type="checkbox" aria-label="Select entry"></td><td data-col="character"></td><td data-col="animal"></td><td><span class="type-badge" data-col="type"></span></td><td><span class="trait-badge" data-col="trait"></span></td><td data-col="scheduleAt"></td><td class="notes-cell" data-col="notes"></td><td class="actions-cell"><button class="text-button edit-entry" type="button">Edit</button><button class="text-button danger remove-entry" type="button">Remove</button></td></tr></template>
+  <script src="src/app.js"></script>
+</body>
+</html>
