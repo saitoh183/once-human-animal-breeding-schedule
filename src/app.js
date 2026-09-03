@@ -11,6 +11,7 @@
   const state = loadState();
   let pendingConfirmation = null;
   let activeListKey = null;
+  let cardQueue = [];
 
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
   function normaliseList(value, fallback) { return Array.isArray(value) && value.length ? [...new Set(value.filter(Boolean).map((item) => String(item).trim()).filter(Boolean))] : [...fallback]; }
@@ -31,10 +32,12 @@
   function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
   function newId(prefix) { return globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`; }
   function compareText(a, b) { return String(a ?? '').localeCompare(String(b ?? ''), undefined, { numeric: true, sensitivity: 'base' }); }
-  function readableDate(value) { const date = new Date(value); return value && !Number.isNaN(date.getTime()) ? new Intl.DateTimeFormat(undefined, { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(date) : '—'; }
+  function readableDate(value) { const date = new Date(value); return value && !Number.isNaN(date.getTime()) ? new Intl.DateTimeFormat('fr-CA', { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(date).replace(',', '') : '—'; }
   function inputDate(value) { const date = new Date(value); return value && !Number.isNaN(date.getTime()) ? new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : ''; }
+  function isBreedReady(entry) { return Boolean(entry.scheduleAt) && Date.now() >= new Date(entry.scheduleAt).getTime() + (24 * 60 * 60 * 1000); }
   function setStatus(message = '', type = '') { const target = byId('form-status'); target.textContent = message; target.dataset.state = type; }
-  function animalColor(animal) { return String([...state.animals].indexOf(animal) % 6); }
+  function animalHue(animal) { const index = Math.max(0, state.animals.indexOf(animal)); return String(Math.round((index * 360 / Math.max(state.animals.length, 1) + 155) % 360)); }
+  function paintAnimal(element, animal) { element.textContent = animal; element.style.setProperty('--animal-hue', animalHue(animal)); }
   function selectOptions(values, selected, firstLabel = '') { return `<option value="">${firstLabel}</option>${values.map((value) => `<option value="${escapeAttribute(value)}"${value === selected ? ' selected' : ''}>${escapeHtml(value)}</option>`).join('')}`; }
   function escapeHtml(value) { const holder = document.createElement('span'); holder.textContent = value ?? ''; return holder.innerHTML; }
   function escapeAttribute(value) { return String(value ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
@@ -54,13 +57,16 @@
     return filtered.sort((left, right) => { const value = view.sort.key === 'scheduleAt' ? new Date(left.scheduleAt || 0) - new Date(right.scheduleAt || 0) : compareText(left[view.sort.key], right[view.sort.key]); return view.sort.direction === 'asc' ? value : -value; });
   }
   function makeInlineSelect(values, selected, field) { const select = document.createElement('select'); select.dataset.inlineField = field; select.innerHTML = selectOptions(values, selected, field === 'trait' ? 'No trait' : ''); return select; }
-  function makeInlineInput(value, field, type = 'text') { const input = document.createElement(type === 'notes' ? 'textarea' : 'input'); input.dataset.inlineField = field; if (input.tagName === 'TEXTAREA') { input.value = value || ''; input.rows = 2; } else { input.type = type; input.value = value || ''; } return input; }
+  function makeInlineInput(value, field, type = 'text') { const input = document.createElement(type === 'notes' ? 'textarea' : 'input'); input.dataset.inlineField = field; if (input.tagName === 'TEXTAREA') { input.value = value || ''; input.rows = 2; } else { input.type = type; input.value = value || ''; if (type === 'datetime-local') { input.lang = 'fr-CA'; input.step = '60'; } } return input; }
   function renderRow(entry) {
     const row = byId('row-template').content.firstElementChild.cloneNode(true); row.dataset.id = entry.id;
     row.querySelector('.row-select').checked = Boolean(entry.selected);
     row.querySelector('[data-col="character"]').textContent = entry.character;
-    const animal = row.querySelector('[data-col="animal"]'); animal.textContent = entry.animal; animal.dataset.color = animalColor(entry.animal);
-    row.querySelector('[data-col="type"]').textContent = entry.type; row.querySelector('[data-col="trait"]').textContent = entry.trait || '—'; row.querySelector('[data-col="scheduleAt"]').textContent = readableDate(entry.scheduleAt); row.querySelector('[data-col="eland"]').textContent = entry.eland ? 'Yes' : '—'; row.querySelector('[data-col="notes"]').textContent = entry.notes || '—';
+    const animal = row.querySelector('[data-col="animal"]'); paintAnimal(animal, entry.animal);
+    row.querySelector('[data-col="type"]').textContent = entry.type; row.querySelector('[data-col="trait"]').textContent = entry.trait || '—';
+    const timerCell = row.querySelector('[data-col="scheduleAt"]'); timerCell.textContent = readableDate(entry.scheduleAt);
+    if (isBreedReady(entry)) { row.classList.add('breed-ready'); timerCell.insertAdjacentHTML('beforeend', '<span class="ready-label">Ready</span>'); }
+    row.querySelector('[data-col="eland"]').textContent = entry.eland ? 'Yes' : '—'; row.querySelector('[data-col="notes"]').textContent = entry.notes || '—';
     row.querySelector('.row-select').addEventListener('change', (event) => { entry.selected = event.target.checked; saveState(); updateSelectionUi(); });
     row.querySelector('.edit-entry').addEventListener('click', () => beginInlineEdit(row, entry)); row.querySelector('.remove-entry').addEventListener('click', () => askToRemoveEntries([entry.id]));
     return row;
@@ -79,9 +85,13 @@
   }
   function renderTable() {
     const entries = visibleEntries(); const body = byId('schedule-body'); body.replaceChildren(); entries.forEach((entry) => body.append(renderRow(entry)));
-    const filtered = Boolean(view.search || Object.values(view.filters).some(Boolean)); const empty = byId('empty-state'); empty.hidden = entries.length > 0; if (filtered) empty.innerHTML = '<strong>No matching schedule entries.</strong><span>Clear the search or filters to see the full queue.</span>';
+    const filtered = Boolean(view.search || Object.values(view.filters).some(Boolean)); const empty = byId('empty-state');
+    empty.hidden = entries.length > 0 || !filtered;
+    if (filtered && !entries.length) empty.innerHTML = '<strong>No matching schedule entries.</strong><span>Clear the search or filters to see the full queue.</span>';
     byId('entry-count').textContent = String(entries.length); const allSelected = entries.length > 0 && entries.every((entry) => entry.selected); byId('select-all').checked = allSelected; byId('select-all').indeterminate = entries.some((entry) => entry.selected) && !allSelected;
-    const applied = Object.values(view.filters).filter(Boolean).length; byId('filter-count').hidden = !applied; byId('filter-count').textContent = String(applied); document.querySelectorAll('[data-sort]').forEach((button) => { const active = button.dataset.sort === view.sort.key; button.dataset.direction = active ? view.sort.direction : ''; button.setAttribute('aria-sort', active ? (view.sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'); }); updateSelectionUi();
+    const applied = Object.values(view.filters).filter(Boolean).length; byId('filter-count').hidden = !applied; byId('filter-count').textContent = String(applied);
+    byId('reset-sort').disabled = view.sort.key === 'scheduleAt' && view.sort.direction === 'asc';
+    document.querySelectorAll('[data-sort]').forEach((button) => { const active = button.dataset.sort === view.sort.key; button.dataset.direction = active ? view.sort.direction : ''; button.setAttribute('aria-sort', active ? (view.sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'); }); updateSelectionUi();
   }
   function updateSelectionUi() { const count = state.entries.filter((entry) => entry.selected).length; byId('selection-count').textContent = count ? `${count} ${count === 1 ? 'entry' : 'entries'} selected` : 'No entries selected'; byId('remove-selected').disabled = !count; byId('add-to-card').disabled = !count; }
   function resetForm() { form.reset(); fields.scheduleAt.value = ''; fields.eland.checked = false; fields.trait.value = ''; fields.notes.value = ''; autoResizeNotes(); }
@@ -104,17 +114,47 @@
   function renameListItem(index, raw) { const value = raw.trim(); if (!value) return; const previous = state[activeListKey][index]; state[activeListKey][index] = value; const field = activeListKey.slice(0, -1); state.entries.forEach((entry) => { if (entry[field] === previous) entry[field] = value; }); state.inventory.forEach((entry) => { if (entry[field] === previous) entry[field] = value; }); saveState(); renderSelects(); renderManagerList(); renderTable(); renderInventory(); }
   function removeListItem(index) { if (state[activeListKey].length <= 1) { window.alert('Keep at least one item in this list.'); return; } state[activeListKey].splice(index, 1); saveState(); renderSelects(); renderManagerList(); renderTable(); }
 
-  function openCardDialog() { const selected = state.entries.filter((entry) => entry.selected); if (!selected.length) return; renderSelect(byId('card-character'), state.characters, 'Choose a character', fields.character.value || selected[0].character); byId('card-message').textContent = `${selected.length} selected ${selected.length === 1 ? 'animal' : 'animals'} will be copied to this character card.`; byId('card-dialog').showModal(); }
-  function addToCard() { const character = byId('card-character').value; if (!character) { window.alert('Choose a character card.'); return; } state.entries.filter((entry) => entry.selected).forEach((entry) => state.inventory.push({ id: newId('inventory'), character, animal: entry.animal, type: entry.type, trait: entry.trait, scheduleAt: entry.scheduleAt, eland: entry.eland, notes: entry.notes })); state.entries.forEach((entry) => entry.selected = false); saveState(); renderTable(); renderInventory(); switchTab('inventory'); }
+  function openCardDialog() {
+    cardQueue = state.entries.filter((entry) => entry.selected);
+    if (!cardQueue.length) return;
+    byId('apply-all-cards').checked = true;
+    renderCardStep();
+  }
+  function renderCardStep() {
+    const entry = cardQueue[0];
+    if (!entry) { state.entries.forEach((item) => item.selected = false); saveState(); renderTable(); renderInventory(); switchTab('inventory'); return; }
+    renderSelect(byId('card-character'), state.characters, 'Choose a character', fields.character.value || entry.character);
+    const applyAll = byId('apply-all-cards').checked;
+    byId('apply-all-label').hidden = cardQueue.length < 2;
+    byId('card-title').textContent = applyAll ? 'Add selected animals to card' : `Add ${entry.animal} to card`;
+    byId('card-message').textContent = applyAll ? `${cardQueue.length} selected animals will be copied to this character card.` : `${cardQueue.length} animal${cardQueue.length === 1 ? '' : 's'} remaining. Choose a character for this one.`;
+    byId('card-dialog').showModal();
+  }
+  function copyToInventory(entry, character) { state.inventory.push({ id: newId('inventory'), character, animal: entry.animal, type: entry.type, trait: entry.trait, scheduleAt: entry.scheduleAt, eland: entry.eland, notes: entry.notes }); }
+  function confirmCardStep() {
+    const character = byId('card-character').value;
+    if (!character) { window.alert('Choose a character card.'); return false; }
+    if (byId('apply-all-cards').checked) { cardQueue.forEach((entry) => copyToInventory(entry, character)); cardQueue = []; }
+    else { copyToInventory(cardQueue.shift(), character); }
+    return true;
+  }
   function renderInventory() {
     const container = byId('inventory-cards'); container.replaceChildren(); const characters = state.characters.filter((character) => state.inventory.some((entry) => entry.character === character));
-    characters.forEach((character) => { const card = document.createElement('article'); card.className = 'character-card'; card.innerHTML = `<h3>${escapeHtml(character)}</h3>`; [false, true].forEach((eland) => { const section = document.createElement('section'); section.className = 'inventory-section'; const animals = state.inventory.filter((entry) => entry.character === character && entry.eland === eland); section.innerHTML = `<div class="inventory-section-title"><span>${eland ? 'Eland' : 'Scenario'}</span><span>${animals.length}</span></div>`; if (!animals.length) section.insertAdjacentHTML('beforeend', '<p class="empty-inventory-section">No animals.</p>'); animals.forEach((entry) => { const row = document.createElement('div'); row.className = 'inventory-row'; const notes = entry.notes ? `<span class="info-dot" title="${escapeAttribute(entry.notes)}">i</span>` : ''; row.innerHTML = `<div><span class="animal-badge" data-color="${animalColor(entry.animal)}">${escapeHtml(entry.animal)}</span><div class="inventory-detail"><span>${escapeHtml(readableDate(entry.scheduleAt))}</span><span>${escapeHtml(entry.type)}</span>${entry.trait ? `<span>${escapeHtml(entry.trait)}</span>` : ''}${notes}</div></div><button class="inventory-remove" type="button" aria-label="Remove ${escapeAttribute(entry.animal)} from ${escapeAttribute(character)}">×</button>`; row.querySelector('.inventory-remove').addEventListener('click', () => { state.inventory = state.inventory.filter((item) => item.id !== entry.id); saveState(); renderInventory(); }); section.append(row); }); card.append(section); }); container.append(card); }); byId('inventory-empty').hidden = state.inventory.length > 0; byId('inventory-count').textContent = String(state.inventory.length);
+    characters.forEach((character) => { const card = document.createElement('article'); card.className = 'character-card'; card.innerHTML = `<h3>${escapeHtml(character)}</h3>`; [false, true].forEach((eland) => { const section = document.createElement('section'); section.className = 'inventory-section'; const animals = state.inventory.filter((entry) => entry.character === character && entry.eland === eland); section.innerHTML = `<div class="inventory-section-title"><span>${eland ? 'Eland' : 'Scenario'}</span><span>${animals.length}</span></div>`; if (!animals.length) section.insertAdjacentHTML('beforeend', '<p class="empty-inventory-section">No animals.</p>'); animals.forEach((entry) => { const row = document.createElement('div'); row.className = 'inventory-row'; const notes = entry.notes ? `<span class="info-dot" title="${escapeAttribute(entry.notes)}">i</span>` : ''; row.innerHTML = `<div><span class="animal-badge" style="--animal-hue:${animalHue(entry.animal)}">${escapeHtml(entry.animal)}</span><div class="inventory-detail"><span>${escapeHtml(readableDate(entry.scheduleAt))}</span><span>${escapeHtml(entry.type)}</span>${entry.trait ? `<span>${escapeHtml(entry.trait)}</span>` : ''}${notes}</div></div><button class="inventory-remove" type="button" aria-label="Remove ${escapeAttribute(entry.animal)} from ${escapeAttribute(character)}">×</button>`; row.querySelector('.inventory-remove').addEventListener('click', () => { state.inventory = state.inventory.filter((item) => item.id !== entry.id); saveState(); renderInventory(); }); section.append(row); }); card.append(section); }); container.append(card); }); byId('inventory-empty').hidden = state.inventory.length > 0; byId('inventory-count').textContent = String(state.inventory.length);
   }
   function switchTab(tab) { view.tab = tab; document.querySelectorAll('.tab-button').forEach((button) => { const active = button.dataset.tab === tab; button.classList.toggle('active', active); button.setAttribute('aria-selected', String(active)); }); byId('schedule-view').hidden = tab !== 'schedule'; byId('inventory-view').hidden = tab !== 'inventory'; }
   function clearFilters() { view.search = ''; byId('schedule-search').value = ''; Object.keys(view.filters).forEach((key) => view.filters[key] = ''); renderSelects(); renderTable(); }
 
   form.addEventListener('submit', (event) => { event.preventDefault(); saveSchedule(); }); fields.notes.addEventListener('input', autoResizeNotes); byId('clear-table').addEventListener('click', askToClear); byId('remove-selected').addEventListener('click', () => askToRemoveEntries(state.entries.filter((entry) => entry.selected).map((entry) => entry.id))); byId('add-to-card').addEventListener('click', openCardDialog);
-  byId('confirm-dialog').addEventListener('close', () => { if (byId('confirm-dialog').returnValue === 'confirm' && pendingConfirmation) pendingConfirmation(); pendingConfirmation = null; }); byId('card-dialog').addEventListener('close', () => { if (byId('card-dialog').returnValue === 'confirm') addToCard(); });
+  byId('confirm-dialog').addEventListener('close', () => { if (byId('confirm-dialog').returnValue === 'confirm' && pendingConfirmation) pendingConfirmation(); pendingConfirmation = null; });
+  byId('card-dialog').addEventListener('close', () => {
+    if (byId('card-dialog').returnValue !== 'confirm') { cardQueue = []; return; }
+    if (!confirmCardStep()) { cardQueue = []; return; }
+    saveState();
+    setTimeout(renderCardStep, 0);
+  });
+  byId('reset-sort').addEventListener('click', () => { view.sort = { key: 'scheduleAt', direction: 'asc' }; renderTable(); });
+  byId('apply-all-cards').addEventListener('change', () => { if (byId('card-dialog').open) { byId('card-title').textContent = byId('apply-all-cards').checked ? 'Add selected animals to card' : `Add ${cardQueue[0]?.animal || 'animal'} to card`; } });
   byId('select-all').addEventListener('change', (event) => { visibleEntries().forEach((entry) => entry.selected = event.target.checked); saveState(); renderTable(); }); byId('schedule-search').addEventListener('input', (event) => { view.search = event.target.value; renderTable(); }); byId('filter-toggle').addEventListener('click', () => { const open = byId('filter-panel').hidden; byId('filter-panel').hidden = !open; byId('filter-toggle').setAttribute('aria-expanded', String(open)); }); byId('clear-filters').addEventListener('click', clearFilters); Object.values(filters).forEach((select) => select.addEventListener('change', () => { view.filters[select.dataset.filter] = select.value; renderTable(); })); document.querySelectorAll('[data-sort]').forEach((button) => button.addEventListener('click', () => { const key = button.dataset.sort; view.sort.direction = view.sort.key === key && view.sort.direction === 'asc' ? 'desc' : 'asc'; view.sort.key = key; renderTable(); })); document.querySelectorAll('[data-tab]').forEach((button) => button.addEventListener('click', () => switchTab(button.dataset.tab))); document.querySelectorAll('[data-manage]').forEach((button) => button.addEventListener('click', () => openManager(button.dataset.manage))); byId('add-list-item').addEventListener('click', addListItem); byId('new-list-item').addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); addListItem(); } });
   renderSelects(); renderTable(); renderInventory(); autoResizeNotes(); saveState();
 })();
