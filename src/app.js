@@ -66,6 +66,7 @@
   function makeInlineSelect(values, selected, field) { const select = document.createElement('select'); select.dataset.inlineField = field; select.innerHTML = selectOptions(values, selected, field === 'trait' ? 'No trait' : ''); return select; }
   function makeInlineInput(value, field, type = 'text') { const input = document.createElement(type === 'notes' ? 'textarea' : 'input'); input.dataset.inlineField = field; if (input.tagName === 'TEXTAREA') { input.value = value || ''; input.rows = 2; } else { input.type = type; input.value = value || ''; if (type === 'datetime-local') { input.lang = 'fr-CA'; input.step = '60'; } } return input; }
   function makeInlineDateControl(value) { const wrap = document.createElement('span'); wrap.className = 'date-control'; const input = makeInlineInput(value, 'scheduleAt', 'datetime-local'); const now = document.createElement('button'); now.type = 'button'; now.className = 'small-action'; now.textContent = 'Now'; now.title = 'Set today and the current time'; now.addEventListener('click', () => { input.value = nowInputDate(); }); wrap.append(input, now); return wrap; }
+  function cardAssignmentFor(entryId) { return state.inventory.find((item) => item.scheduleEntryId === entryId); }
   function renderRow(entry) {
     const row = byId('row-template').content.firstElementChild.cloneNode(true); row.dataset.id = entry.id;
     row.querySelector('.row-select').checked = Boolean(entry.selected);
@@ -75,22 +76,24 @@
     const timerCell = row.querySelector('[data-col="scheduleAt"]'); timerCell.textContent = readableDate(entry.scheduleAt);
     if (isBreedReady(entry)) { row.classList.add('breed-ready'); timerCell.insertAdjacentHTML('beforeend', '<span class="ready-label">Ready</span>'); }
     row.querySelector('[data-col="eland"]').textContent = entry.eland ? 'Yes' : '—'; row.querySelector('[data-col="notes"]').textContent = entry.notes || '—';
+    const assignment = cardAssignmentFor(entry.id); if (assignment) { const icon = document.createElement('span'); icon.className = 'card-status-icon'; icon.textContent = '📇'; icon.title = `Added to ${assignment.character}'s card`; icon.setAttribute('aria-label', `Added to ${assignment.character}'s card`); row.querySelector('[data-col="card"]').append(icon); }
     row.querySelector('.row-select').addEventListener('change', (event) => { entry.selected = event.target.checked; saveState(); updateSelectionUi(); });
     row.querySelector('.edit-entry').addEventListener('click', () => beginInlineEdit(row, entry)); row.querySelector('.remove-entry').addEventListener('click', () => askToRemoveEntries([entry.id]));
     return row;
   }
+  function replaceRow(row, entry) { row.replaceWith(renderRow(entry)); }
   function beginInlineEdit(row, entry) {
     row.classList.add('editing'); row.querySelector('.edit-entry').hidden = true; row.querySelector('.remove-entry').hidden = true; row.querySelector('.inline-edit-actions').hidden = false;
     // Keep the existing table cells. Replacing <td> nodes with controls was the reason the row jumped out of alignment.
     const unlock = (field, element) => { const cell = row.querySelector(`[data-col="${field}"]`); cell.replaceChildren(element); };
     unlock('character', makeInlineSelect(state.characters, entry.character, 'character')); unlock('animal', makeInlineSelect(state.animals, entry.animal, 'animal')); unlock('type', makeInlineSelect(state.types, entry.type, 'type')); unlock('trait', makeInlineSelect(['', 'TH', 'Perfect', 'Production'], entry.trait, 'trait')); unlock('scheduleAt', makeInlineDateControl(inputDate(entry.scheduleAt)));
     const eland = document.createElement('input'); eland.type = 'checkbox'; eland.checked = Boolean(entry.eland); eland.dataset.inlineField = 'eland'; eland.setAttribute('aria-label', 'In Eternaland'); unlock('eland', eland); unlock('notes', makeInlineInput(entry.notes, 'notes', 'notes'));
-    row.querySelector('.save-entry').addEventListener('click', () => saveInlineEdit(row, entry)); row.querySelector('.cancel-entry').addEventListener('click', renderTable);
+    row.querySelector('.save-entry').addEventListener('click', () => saveInlineEdit(row, entry)); row.querySelector('.cancel-entry').addEventListener('click', () => replaceRow(row, entry));
   }
   function saveInlineEdit(row, entry) {
     row.querySelectorAll('[data-inline-field]').forEach((control) => { const key = control.dataset.inlineField; entry[key] = key === 'eland' ? control.checked : control.value; });
     if (!entry.character || !entry.animal || !entry.type) { window.alert('Character, animal, and type are required.'); return; }
-    entry.scheduleAt = entry.scheduleAt ? new Date(entry.scheduleAt).toISOString() : ''; saveState(); renderTable(); renderInventory();
+    entry.scheduleAt = entry.scheduleAt ? new Date(entry.scheduleAt).toISOString() : ''; saveState(); replaceRow(row, entry); renderInventory();
   }
   function renderTable() {
     const entries = visibleEntries(); const body = byId('schedule-body'); body.replaceChildren(); entries.forEach((entry) => body.append(renderRow(entry)));
