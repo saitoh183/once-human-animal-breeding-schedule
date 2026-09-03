@@ -1,6 +1,6 @@
 # Once Human Animal Breeding Schedule
 
-A dependency-free local tracker for Once Human breeding checks. Data is stored in the browser's `localStorage` — no account, backend, or mystery meat service required.
+A dependency-free local tracker for Once Human breeding checks. Data is stored in the browser's `localStorage` — no account, backend, or mystery meat service required. Use **Export JSON** / **Import JSON** for portable backups or to replace the current browser data.
 
 ## Features
 

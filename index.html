@@ -11,7 +11,7 @@
   <main class="shell">
     <header class="app-header">
       <div><p class="eyebrow">ONCE HUMAN · RANCHING</p><h1>Animal Breeding Schedule</h1><p class="subtle">Track pairings, traits, and where every animal currently lives.</p></div>
-      <button id="clear-table" class="button button-danger" type="button">Clear schedule</button>
+      <div class="header-actions"><button id="export-data" class="button button-quiet" type="button">Export JSON</button><button id="import-data" class="button button-quiet" type="button">Import JSON</button><input id="import-file" type="file" accept="application/json,.json" hidden><button id="clear-table" class="button button-danger" type="button">Clear schedule</button></div>
     </header>
 
     <nav class="app-tabs" aria-label="Application sections">
@@ -28,7 +28,7 @@
             <label class="field">Animal <span class="select-with-action"><select id="animal" required></select><button class="manage-button" data-manage="animals" type="button" title="Manage animals and ordering" aria-label="Manage animals and ordering">⋯</button></span></label>
             <label class="field">Type <span class="select-with-action"><select id="type" required></select><button class="manage-button" data-manage="types" type="button" title="Manage types" aria-label="Manage types">⋯</button></span></label>
             <label class="field trait-select-field">Trait <select id="trait"><option value="">No trait</option><option value="TH">TH</option><option value="Perfect">Perfect</option><option value="Production">Production</option></select></label>
-            <label class="field date-field">Breed time <input id="schedule-at" type="datetime-local" lang="fr-CA" step="60"></label>
+            <label class="field date-field">Breed time <span class="date-control"><input id="schedule-at" type="datetime-local" lang="fr-CA" step="60"><button id="set-schedule-now" class="small-action" type="button" title="Set today and the current time">Now</button></span></label>
             <label class="field eland-field"><span>Eland</span><span class="toggle-line"><input id="eland" type="checkbox"><span>Animal is in Eternaland</span></span></label>
             <label class="field notes-field">Notes <textarea id="notes" rows="2" placeholder="Pairing details, appearance, parents…"></textarea></label>
             <div class="form-actions"><button id="submit-entry" class="button button-primary" type="submit">Add schedule</button></div>

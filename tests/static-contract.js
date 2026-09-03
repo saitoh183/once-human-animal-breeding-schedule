@@ -7,9 +7,9 @@ const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const script = fs.readFileSync(path.join(root, 'src', 'app.js'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'src', 'styles.css'), 'utf8');
 const contracts = [
-  [html, ['lang="fr-CA"', 'id="reset-sort"', 'id="apply-all-cards"', 'id="inventory-cards"', 'id="schedule-at" type="datetime-local" lang="fr-CA"', 'id="empty-state" class="empty-state" hidden'], 'HTML'],
-  [script, ['hourCycle: \'h23\'', 'isBreedReady', 'breed-ready', 'animalHue', 'paintAnimal', 'cardQueue', 'confirmCardStep', 'apply-all-cards', 'reset-sort', 'cell.replaceChildren(element)'], 'app.js'],
-  [css, ['font-size:17px', 'character-card', 'breed-ready', '--animal-hue', 'table-layout:fixed', '.inline-edit-actions[hidden]{display:none}', '.inventory-section-title{display:flex;justify-content:space-between;margin-bottom:10px;color:#ffad5c', '@media'], 'styles.css']
+  [html, ['lang="fr-CA"', 'id="reset-sort"', 'id="apply-all-cards"', 'id="inventory-cards"', 'id="schedule-at" type="datetime-local" lang="fr-CA"', 'id="set-schedule-now"', 'id="export-data"', 'id="import-data"', 'id="import-file"', 'id="empty-state" class="empty-state" hidden'], 'HTML'],
+  [script, ['hourCycle: \'h23\'', 'isBreedReady', 'breed-ready', 'animalHue', 'paintAnimal', 'cardQueue', 'confirmCardStep', 'assignToInventory', 'scheduleEntryId', 'Existing assignments will transfer.', 'nowInputDate', 'makeInlineDateControl', 'exportData', 'importData', 'apply-all-cards', 'reset-sort', 'cell.replaceChildren(element)'], 'app.js'],
+  [css, ['font-size:17px', 'character-card', 'breed-ready', '--animal-hue', 'table-layout:fixed', '.date-control input{min-width:0}', '.header-actions', '.inline-edit-actions[hidden]{display:none}', '.inventory-section-title{display:flex;justify-content:space-between;margin-bottom:10px;color:#ffad5c', '@media'], 'styles.css']
 ];
 for (const [content, labels, kind] of contracts) for (const label of labels) if (!content.includes(label)) throw new Error(`${kind} is missing: ${label}`);
 if (html.includes('No breeding checks scheduled.')) throw new Error('Deprecated empty-table message remains in the UI.');
