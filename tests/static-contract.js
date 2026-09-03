@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 'use strict';
-
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
@@ -8,13 +7,11 @@ const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const script = fs.readFileSync(path.join(root, 'src', 'app.js'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'src', 'styles.css'), 'utf8');
 
-const requiredHtml = ['id="character"', 'id="animal"', 'id="type"', 'name="trait"', 'type="datetime-local"', 'id="notes"', 'id="form-status"', 'id="schedule-search"', 'id="filter-toggle"', 'id="filter-panel"', 'id="filter-character"', 'id="filter-animal"', 'id="filter-type"', 'id="filter-trait"', 'data-sort="scheduleAt"', 'id="schedule-body"', 'id="remove-selected"', 'id="manager-dialog"', 'id="confirm-dialog"'];
-const requiredScript = ['localStorage', 'newEntryId', 'globalThis.crypto?.randomUUID', 'matchesView', 'visibleEntries', 'data-sort', 'clearFilters', 'askToRemove', 'editEntry', 'openManager', "'Bear'", "'Wild Buffalo'", "'Wolf'", 'Intl.DateTimeFormat', 'Schedule entry added.'];
-const requiredCss = ['position:sticky', 'textarea', 'overflow:hidden', '--cyan', 'filter-panel', 'sort-button', 'data-value="phantom"', 'data-value="perfect"', '@media'];
-
-for (const [content, labels, kind] of [[html, requiredHtml, 'HTML'], [script, requiredScript, 'app.js'], [css, requiredCss, 'styles.css']]) {
-  for (const label of labels) {
-    if (!content.includes(label)) throw new Error(`${kind} is missing required contract: ${label}`);
-  }
-}
-console.log('Static UI contract passed: form controls, management, confirmation, persistence, roster, and sticky-header styling present.');
+const contracts = [
+  [html, ['id="trait"', 'id="eland"', 'id="schedule-search"', 'id="filter-toggle"', 'id="add-to-card"', 'data-tab="inventory"', 'id="inventory-cards"', 'id="card-dialog"', 'class="inline-edit-actions"'], 'HTML'],
+  [script, ['once-human-animal-breeding-schedule-v2', 'LEGACY_KEY', "'Ewe': 'Deer'", "'Ram': 'Sheep'", 'beginInlineEdit', 'saveInlineEdit', 'openCardDialog', 'addToCard', 'renderInventory', 'moveListItem', 'hour12: false'], 'app.js'],
+  [css, ['animal-badge', 'inventory-cards', 'inline-edit-actions', 'table-wrap{border', 'filter-panel', '@media'], 'styles.css']
+];
+for (const [content, labels, kind] of contracts) for (const label of labels) if (!content.includes(label)) throw new Error(`${kind} is missing: ${label}`);
+if (css.includes('.table-wrap{max-height') || css.includes('.table-wrap{overflow:auto')) throw new Error('Nested table scrolling reintroduced.');
+console.log('Static UI contract passed: migration, optional calendar, Eland, inline edits, cards, filtering, ordering, and no desktop nested table scroll.');
