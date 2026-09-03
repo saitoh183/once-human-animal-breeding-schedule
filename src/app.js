@@ -73,9 +73,10 @@
   }
   function beginInlineEdit(row, entry) {
     row.classList.add('editing'); row.querySelector('.edit-entry').hidden = true; row.querySelector('.remove-entry').hidden = true; row.querySelector('.inline-edit-actions').hidden = false;
-    const replace = (field, element) => row.querySelector(`[data-col="${field}"]`).replaceWith(element);
-    replace('character', makeInlineSelect(state.characters, entry.character, 'character')); replace('animal', makeInlineSelect(state.animals, entry.animal, 'animal')); replace('type', makeInlineSelect(state.types, entry.type, 'type')); replace('trait', makeInlineSelect(['', 'TH', 'Perfect', 'Production'], entry.trait, 'trait')); replace('scheduleAt', makeInlineInput(inputDate(entry.scheduleAt), 'scheduleAt', 'datetime-local'));
-    const eland = document.createElement('input'); eland.type = 'checkbox'; eland.checked = Boolean(entry.eland); eland.dataset.inlineField = 'eland'; eland.setAttribute('aria-label', 'In Eternaland'); replace('eland', eland); replace('notes', makeInlineInput(entry.notes, 'notes', 'notes'));
+    // Keep the existing table cells. Replacing <td> nodes with controls was the reason the row jumped out of alignment.
+    const unlock = (field, element) => { const cell = row.querySelector(`[data-col="${field}"]`); cell.replaceChildren(element); };
+    unlock('character', makeInlineSelect(state.characters, entry.character, 'character')); unlock('animal', makeInlineSelect(state.animals, entry.animal, 'animal')); unlock('type', makeInlineSelect(state.types, entry.type, 'type')); unlock('trait', makeInlineSelect(['', 'TH', 'Perfect', 'Production'], entry.trait, 'trait')); unlock('scheduleAt', makeInlineInput(inputDate(entry.scheduleAt), 'scheduleAt', 'datetime-local'));
+    const eland = document.createElement('input'); eland.type = 'checkbox'; eland.checked = Boolean(entry.eland); eland.dataset.inlineField = 'eland'; eland.setAttribute('aria-label', 'In Eternaland'); unlock('eland', eland); unlock('notes', makeInlineInput(entry.notes, 'notes', 'notes'));
     row.querySelector('.save-entry').addEventListener('click', () => saveInlineEdit(row, entry)); row.querySelector('.cancel-entry').addEventListener('click', renderTable);
   }
   function saveInlineEdit(row, entry) {
